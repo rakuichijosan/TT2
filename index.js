@@ -1,9 +1,10 @@
 import puppeteer from "puppeteer";
 import fs from 'fs';
+import fetch from 'node-fetch';
 
   async function fetchTweets() {
     const browser = await puppeteer.launch({
-      headless: true, // Cambia a true para la versión final
+      headless:  false, // Cambia a true para la versión final
       slowMo: 50,
       userDataDir: 'C:\\Users\\ahri1\\AppData\\Local\\Google\\Chrome\\User Data\\Profile 1',
     });
@@ -51,18 +52,21 @@ import fs from 'fs';
 
     // Navega al perfil de @MetroCDMX directamente
     await page.goto('https://twitter.com/MetroCDMX', { waitUntil: "networkidle2" });
-    await page.waitForSelector('article [lang]', {timeout: 60000})
+    await page.waitForSelector('article [lang]', {timeout: 5000});
 
     // Obtén el último tweet
     const tweet = await page.evaluate(() => {
       const tweetNode = document.querySelector('article [lang]');
+      let tweetImage = null;
       if (tweetNode) {
         const tweetText = tweetNode.innerText;
-        let tweetImage = null;
-        const imageNode = tweetNode.closest('article').querySelector('img[src*="twimg"]');
+        /*const imageNode = tweetNode.closest('article').querySelector('img[src*="twimg"]');
         if (imageNode) {
           tweetImage = imageNode.src;
-        }
+        }*/
+        const imageNodes = tweetNode.closest('article').querySelectorAll('img[src*="twimg"]');
+        tweetImages = Array.from(imageNodes).map(img => img.src);
+        tweetImage = tweetImages[1];
         const timeElement = tweetNode.closest('article').querySelector('time');
         const tweetDate = timeElement ? timeElement.getAttribute('datetime') : null;
         return { tweetText, tweetImage, tweetDate };
@@ -71,6 +75,17 @@ import fs from 'fs';
     });
 
     await browser.close();
+
+    if (tweet && tweet.tweetImage) {
+      // Aquí se realizaría la solicitud para obtener la imagen en formato binario
+      const response = await fetch(tweet.tweetImage);
+      const imageBuffer = await response.buffer();
+      tweet.tweetImage = imageBuffer;
+  
+      // Aquí podrías proceder a almacenar imageBuffer en tu base de datos
+      // Por ejemplo, este paso dependerá de tu base de datos y cómo manejas las conexiones a la misma.
+      console.log('Imagen obtenida en formato binario:', imageBuffer);
+    }
 
     // Define el nombre y ruta del archivo JSON
     const filePath = 'tweets.json';
@@ -91,4 +106,4 @@ import fs from 'fs';
     }
   }
 
-fetchTweets();
+  fetchTweets();
